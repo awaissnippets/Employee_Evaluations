@@ -671,10 +671,10 @@ const ManualEvaluatorModal = ({
           </button>
           <button
             onClick={handleSubmit}
-            // disabled={loading}
-            // className={`px-4 py-2 rounded-lg text-white ${
-            //   loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
-            // }`}
+            disabled={loading}
+            className={`font-semibold px-4 py-2 rounded-lg shadow-md text-white ${
+              loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+            }`}
           >
             {loading ? 'Saving...' : 'Add Evaluator'}
           </button>
@@ -810,6 +810,32 @@ useEffect(() => {
   
   // UI states
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState(null);
+  const [saveError, setSaveError] = useState(null);
+
+  const handleSaveAll = useCallback(async () => {
+    try {
+      setIsSaving(true);
+      setSaveMessage(null);
+      setSaveError(null);
+
+      const payload = {
+        campaignId: selectedCampaign || null,
+        employees: selectedEmployees,
+        evaluators: selectedEvaluators,
+        factors: factorSelections,
+      };
+
+      await api('/employee-evaluations', { method: 'POST', body: payload });
+      setSaveMessage('All changes saved successfully.');
+    } catch (err) {
+      console.error(err);
+      setSaveError(err.message || 'Failed to save.');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [selectedCampaign, selectedEmployees, selectedEvaluators, factorSelections]);
 
   // Get current factors based on selected type
   const getCurrentFactors = useCallback(() => {
@@ -983,15 +1009,29 @@ const handleRemoveEvaluator = useCallback(async (index) => {
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Evaluation Campaign Setup</h1>
+              <h1 className="text-3xl font-bold text-gray-900">Employee Evaluation Setup</h1>
               <p className="text-gray-600 mt-2">Configure evaluation campaigns with employees, factors, and evaluators</p>
             </div>
-            
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleSaveAll}
+                className={`inline-flex items-center gap-2 font-medium px-4 py-2 rounded-lg shadow-md text-white ${isSaving ? 'bg-gray-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'} focus:ring-2 focus:ring-indigo-500 transition-colors`}
+                disabled={isSaving}
+                title="Save entire setup"
+              >
+                {isSaving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 space-y-8">
+        {(saveMessage || saveError) && (
+          <div className={`${saveError ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'} rounded-lg p-3`}>
+            {saveError || saveMessage}
+          </div>
+        )}
         {/* Campaign Selection */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
@@ -1037,10 +1077,8 @@ const handleRemoveEvaluator = useCallback(async (index) => {
               </span>
             </div>
             <button
-  // disabled={!selectedCampaign || loading.employees}
   onClick={() => setShowEmployeeModal(true)}
-  className={`inline-flex items-center gap-2 font-medium px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors
-              ${!selectedCampaign ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+  className="inline-flex items-center gap-2 font-medium px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white focus:ring-2 focus:ring-blue-500 transition-colors"
 >
   <Plus className="w-4 h-4" />
   Add Employees
@@ -1144,10 +1182,8 @@ const handleRemoveEvaluator = useCallback(async (index) => {
               </span>
             </div>
            <button
-  // disabled={!selectedCampaign || loading.evaluators}
   onClick={() => setShowEvaluatorModal(true)}
-  className={`inline-flex items-center gap-2 font-medium px-4 py-2 rounded-lg focus:ring-2 focus:ring-purple-500 transition-colors
-              ${!selectedCampaign ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700 text-white'}`}
+  className="inline-flex items-center gap-2 font-medium px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white focus:ring-2 focus:ring-purple-500 transition-colors"
 >
   <Plus className="w-4 h-4" />
   Add Evaluators
@@ -1157,7 +1193,7 @@ const handleRemoveEvaluator = useCallback(async (index) => {
   className="inline-flex items-center gap-2 font-medium px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white focus:ring-2 focus:ring-green-500"
 >
   <Plus className="w-4 h-4" />
-  Add Evaluator Manually
+  Add Externally
 </button>
 
           </div>
@@ -1263,13 +1299,23 @@ const handleRemoveEvaluator = useCallback(async (index) => {
               <div className="text-xs text-purple-600 mt-1">assigned to campaign</div>
             </div>
             <div className="text-center p-6 bg-gray-50 rounded-xl border border-gray-200">
-              <div className="text-3xl font-bold text-gray-600 mb-2">
-                {selectedCampaign ? '1' : '0'}
-              </div>
-              <div className="text-sm font-medium text-gray-800">Campaign</div>
-              <div className="text-xs text-gray-600 mt-1">
-                {selectedCampaign ? 'selected' : 'not selected'}
-              </div>
+              {selectedCampaign ? (
+                <div>
+                  <div className="text-sm font-medium text-gray-800 mb-1">Selected Campaign</div>
+                  <div className="text-base font-semibold text-gray-900">
+                    {campaigns.find((c) => String(c.id) === String(selectedCampaign))?.name || '—'}
+                  </div>
+                  <div className="text-xs text-gray-600 mt-2">
+                    {campaigns.find((c) => String(c.id) === String(selectedCampaign))?.description || ''}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="text-3xl font-bold text-gray-600 mb-2">0</div>
+                  <div className="text-sm font-medium text-gray-800">Campaign</div>
+                  <div className="text-xs text-gray-600 mt-1">not selected</div>
+                </div>
+              )}
             </div>
           </div>
           
@@ -1298,7 +1344,20 @@ const handleRemoveEvaluator = useCallback(async (index) => {
   isOpen={showManualEvaluatorModal}
   onClose={() => setShowManualEvaluatorModal(false)}
   onCreated={(newEvaluator) => {
+    // Add to master evaluators and immediately to selected list
     setEvaluators(prev => [...prev, newEvaluator]);
+    setSelectedEvaluators(prev => {
+      const map = new Map(prev.map(e => [e.id, e]));
+      map.set(newEvaluator.id, newEvaluator);
+      return Array.from(map.values());
+    });
+    // If a campaign is selected, assign evaluator to campaign in backend
+    if (selectedCampaign) {
+      EvaluatorAPI.addToCampaign(selectedCampaign, [newEvaluator.id]).catch((err) => {
+        console.error(err);
+        alert(`Failed to assign new evaluator to campaign: ${err.message}`);
+      });
+    }
   }}
 />
 
